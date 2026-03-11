@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "LMPtCGe7hnw=",
+  "success": true,
+  "projectFilePath": "E:\\Desktop\\PLC模拟器\\S7PlcSimulator\\S7PlcSimulator.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\BLSH-BK-0288\\.nuget\\packages\\snap7server.net\\1.0.1\\snap7server.net.1.0.1.nupkg.sha512",
+    "C:\\Users\\BLSH-BK-0288\\.nuget\\packages\\microsoft.netcore.app.host.win-x86\\10.0.3\\microsoft.netcore.app.host.win-x86.10.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}

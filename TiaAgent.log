@@ -1,0 +1,57 @@
+2026-03-11 10:42:44.582 [Information] Agent: TiaAgent starting...
+2026-03-11 10:42:44.584 [Information] Agent: Starting stdio MCP mode (stdin is redirected).
+2026-03-11 10:42:44.611 [Debug] Agent: Resolving public API assembly: Siemens.Engineering, Version=18.0.0.0, Culture=neutral, PublicKeyToken=d29ec89bac048f84
+2026-03-11 10:42:44.613 [Debug] Agent: Found assembly at: D:\Program Files\Siemens\Automation\Portal V18\PublicAPI\V18\Siemens.Engineering.dll
+2026-03-11 10:42:44.638 [Information] Agent: Registered MCP tool: block.xml.export
+2026-03-11 10:42:44.639 [Information] Agent: Registered MCP tool: block.xml.import
+2026-03-11 10:42:44.639 [Information] Agent: Registered MCP tool: block.xml.import.batch
+2026-03-11 10:42:44.639 [Information] Agent: Registered MCP tool: block.lad.create
+2026-03-11 10:42:44.639 [Information] Agent: Registered MCP tool: block.scl.source.get
+2026-03-11 10:42:44.639 [Information] Agent: Registered MCP tool: block.scl.source.import
+2026-03-11 10:42:44.639 [Information] Agent: Registered MCP tool: block.scl.source.update
+2026-03-11 10:42:44.640 [Information] Agent: Registered MCP tool: block.list
+2026-03-11 10:42:44.640 [Information] Agent: Registered MCP tool: block.scl.create
+2026-03-11 10:42:44.640 [Information] Agent: Registered MCP tool: block.delete
+2026-03-11 10:42:44.640 [Information] Agent: Registered MCP tool: plc.compile
+2026-03-11 10:42:44.640 [Information] Agent: Registered MCP tool: block.db.values.get
+2026-03-11 10:42:44.641 [Information] Agent: Registered MCP tool: plc.device.add
+2026-03-11 10:42:44.641 [Information] Agent: Registered MCP tool: plc.list
+2026-03-11 10:42:44.641 [Information] Agent: Registered MCP tool: plc.active.set
+2026-03-11 10:42:44.641 [Information] Agent: Registered MCP tool: hmi.device.add
+2026-03-11 10:42:44.641 [Information] Agent: Registered MCP tool: hmi.list
+2026-03-11 10:42:44.641 [Information] Agent: Registered MCP tool: hmi.tag.table.export
+2026-03-11 10:42:44.642 [Information] Agent: Registered MCP tool: hmi.screen.export
+2026-03-11 10:42:44.642 [Information] Agent: Registered MCP tool: hmi.xml.import
+2026-03-11 10:42:44.642 [Information] Agent: Registered MCP tool: hmi.api.inspect
+2026-03-11 10:42:44.642 [Information] Agent: Registered MCP tool: hmi.object.inspect
+2026-03-11 10:42:44.642 [Information] Agent: Registered MCP tool: block.interface.member.add
+2026-03-11 10:42:44.643 [Information] Agent: Registered MCP tool: block.interface.get
+2026-03-11 10:42:44.643 [Information] Agent: Registered MCP tool: block.interface.member.remove
+2026-03-11 10:42:44.643 [Information] Agent: Registered MCP tool: block.interface.member.modify
+2026-03-11 10:42:44.645 [Information] Agent: Registered MCP tool: lad.network.calls.append
+2026-03-11 10:42:44.645 [Information] Agent: Registered MCP tool: lad.network.logic.append
+2026-03-11 10:42:44.645 [Information] Agent: Registered MCP tool: lad.network.list
+2026-03-11 10:42:44.645 [Information] Agent: Registered MCP tool: lad.network.call.update
+2026-03-11 10:42:44.645 [Information] Agent: Registered MCP tool: lad.network.remove
+2026-03-11 10:42:44.646 [Information] Agent: Registered MCP tool: agent.status.get
+2026-03-11 10:42:44.646 [Information] Agent: Registered MCP tool: portal.process.list
+2026-03-11 10:42:44.646 [Information] Agent: Registered MCP tool: portal.connect
+2026-03-11 10:42:44.646 [Information] Agent: Registered MCP tool: portal.disconnect
+2026-03-11 10:42:44.646 [Information] Agent: Registered MCP tool: project.create
+2026-03-11 10:42:44.647 [Information] Agent: Registered MCP tool: project.open
+2026-03-11 10:42:44.647 [Information] Agent: Registered MCP tool: project.save
+2026-03-11 10:42:44.647 [Information] Agent: Registered MCP tool: project.close
+2026-03-11 10:42:44.647 [Information] Agent: Registered MCP tool: project.tree.get
+2026-03-11 10:42:44.647 [Information] Agent: Registered MCP tool: tag.table.list
+2026-03-11 10:42:44.647 [Information] Agent: Registered MCP tool: tag.table.export
+2026-03-11 10:42:44.647 [Information] Agent: Registered MCP tool: tag.list
+2026-03-11 10:42:44.647 [Information] Agent: Registered MCP tool: tag.table.create
+2026-03-11 10:42:44.647 [Information] Agent: Registered MCP tool: tag.add
+2026-03-11 10:42:44.648 [Information] Agent: Registered MCP tool: text.replace.preview
+2026-03-11 10:42:44.648 [Information] Agent: Registered MCP tool: text.replace.apply
+2026-03-11 10:42:44.648 [Information] Agent: Registered MCP tool: udt.list
+2026-03-11 10:42:44.651 [Information] Agent: McpResourceRegistry: Knowledge/ directory not found, no resources registered.
+2026-03-11 10:42:54.230 [Information] Agent: stdin stream closed.
+2026-03-11 10:42:54.230 [Information] Agent: McpServer stopped
+2026-03-11 10:42:54.233 [Information] Agent: STA Thread Started processing queue.
+2026-03-11 10:42:54.233 [Information] Agent: TiaAgent shutting down.

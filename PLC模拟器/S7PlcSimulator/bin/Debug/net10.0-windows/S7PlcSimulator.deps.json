@@ -1,0 +1,44 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "S7PlcSimulator/1.0.0": {
+        "dependencies": {
+          "Snap7Server.Net": "1.0.1"
+        },
+        "runtime": {
+          "S7PlcSimulator.dll": {}
+        }
+      },
+      "Snap7Server.Net/1.0.1": {
+        "runtime": {
+          "lib/netcoreapp3.1/Snap7Server.Net.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          },
+          "lib/netcoreapp3.1/snap7.dll": {
+            "fileVersion": "0.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "S7PlcSimulator/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Snap7Server.Net/1.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-xsbZAPQZFQZHdUjnHA6XeFGg1nYgx4QtaiPqsxkld1Dhtzv7AydRCsTXU9YZhlb0jMpHEGr1+g9biB5BdEDwvA==",
+      "path": "snap7server.net/1.0.1",
+      "hashPath": "snap7server.net.1.0.1.nupkg.sha512"
+    }
+  }
+}
