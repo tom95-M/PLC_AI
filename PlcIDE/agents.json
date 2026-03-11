@@ -1,0 +1,35 @@
+{
+  "agents": [
+    {
+      "id": "default",
+      "name": "通用助手",
+      "description": "通用规则执行，适合日常启动和简单自动化。",
+      "defaultTool": "",
+      "mode": "balanced",
+      "autoCreateOnWrite": true,
+      "projectPrefix": "PLC_Project",
+      "llmEnabled": true,
+      "llmProvider": "openai",
+      "llmBaseUrl": "https://api.siliconflow.cn/v1",
+      "llmApiKey": "sk-rrigzvpzpcnhlssuvdnkfurlwawvcpolnlkmpycsfeuhtmgc",
+      "llmModel": "Pro/zai-org/GLM-5",
+      "llmTemperature": 0.2
+    },
+    {
+      "id": "gx_builder",
+      "name": "GX项目助手",
+      "description": "默认面向 GX Works3，写程序时自动先建项目。",
+      "defaultTool": "gxwork3",
+      "mode": "aggressive",
+      "autoCreateOnWrite": true,
+      "projectPrefix": "GX_Auto",
+      "llmEnabled": false,
+      "llmProvider": "openai",
+      "llmBaseUrl": "https://api.openai.com/v1",
+      "llmApiKey": "",
+      "llmModel": "gpt-4.1-mini",
+      "llmTemperature": 0.2
+    }
+  ],
+  "currentAgentId": "default"
+}

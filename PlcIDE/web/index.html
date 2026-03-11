@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PLC 编程工具网页控制台</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="bg-shape bg-shape-1"></div>
+  <div class="bg-shape bg-shape-2"></div>
+
+  <main class="app">
+    <header class="hero">
+      <h1>PLC 编程工具网页控制台</h1>
+      <p>工具状态在 AI 对话框顶部展示。</p>
+      <div class="hero-actions">
+        <button id="refreshBtn" class="btn">刷新状态</button>
+      </div>
+    </header>
+
+    <section class="tool-strip-wrap tool-strip-top">
+      <div class="tool-strip-title">工具状态</div>
+      <section id="toolGrid" class="tool-strip"></section>
+    </section>
+
+    <div class="workspace">
+      <section class="right-panel">
+        <section class="ai-box">
+          <div class="chat-head">
+            <h2>AI 对话</h2>
+            <div class="chat-head-actions">
+              <button id="openAgentModalBtn" class="btn">设置</button>
+              <button id="chatClearBtn" class="btn">清空会话</button>
+            </div>
+          </div>
+
+          <div id="chatLog" class="chat-log"></div>
+          <div id="chatHistory" class="chat-history"></div>
+          <div class="ai-row">
+            <textarea id="aiInput" placeholder="输入问题或控制指令"></textarea>
+            <button id="aiSendBtn" class="btn btn-primary">发送</button>
+          </div>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <div id="agentModal" class="modal-backdrop hidden" aria-hidden="true">
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-label="设置">
+      <div class="modal-head">
+        <h2>设置</h2>
+        <button id="closeAgentModalBtn" class="btn">关闭</button>
+      </div>
+      <div class="agent-grid">
+        <label>Agent<select id="agentSelect"></select></label>
+        <label>LLM Base URL<input id="agentBaseUrl" type="text" placeholder="https://api.openai.com/v1" /></label>
+        <label>LLM Model<input id="agentModel" type="text" placeholder="gpt-5-codex" /></label>
+        <label>Temperature<input id="agentTemp" type="number" step="0.1" min="0" max="2" /></label>
+        <label>API Key<input id="agentApiKey" type="password" placeholder="sk-..." /></label>
+        <label class="check-row"><input id="agentLlmEnabled" type="checkbox" />启用外部 LLM API</label>
+      </div>
+      <textarea id="agentDesc" class="agent-desc" placeholder="Agent 描述（可选）"></textarea>
+      <div class="agent-actions">
+        <button id="agentNewBtn" class="btn">新建</button>
+        <button id="agentSaveBtn" class="btn">保存</button>
+        <button id="agentDeleteBtn" class="btn">删除</button>
+        <button id="agentTestBtn" class="btn">测试 API</button>
+      </div>
+    </section>
+  </div>
+
+  <template id="toolCardTemplate">
+    <article class="tool-chip">
+      <div class="tool-name"></div>
+    </article>
+  </template>
+
+  <script src="/app.js"></script>
+</body>
+</html>
