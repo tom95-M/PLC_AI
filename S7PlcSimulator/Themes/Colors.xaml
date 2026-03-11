@@ -1,0 +1,23 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <SolidColorBrush x:Key="WindowBrush" Color="#EEF1F6" />
+  <SolidColorBrush x:Key="TopBarBrush" Color="#F8FAFD" />
+  <SolidColorBrush x:Key="HeadBrush" Color="#E9EFF8" />
+  <SolidColorBrush x:Key="DividerBrush" Color="#CAD3E0" />
+  <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="SurfaceAltBrush" Color="#F7FAFF" />
+  <SolidColorBrush x:Key="PanelBorderBrush" Color="#CBD4E1" />
+  <SolidColorBrush x:Key="InputBrush" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="InputBorderBrush" Color="#C7D1E0" />
+  <SolidColorBrush x:Key="TitleBrush" Color="#132033" />
+  <SolidColorBrush x:Key="PrimaryBrush" Color="#0057D8" />
+  <SolidColorBrush x:Key="SubtleBrush" Color="#4B5A70" />
+  <SolidColorBrush x:Key="HintBrush" Color="#6A778D" />
+  <SolidColorBrush x:Key="MonitorValueTextBrush" Color="#0E2A47" />
+  <SolidColorBrush x:Key="MonitorValueBackgroundBrush" Color="#FFF1D6" />
+  <SolidColorBrush x:Key="MonitorToggleBackgroundBrush" Color="#F1F8FF" />
+  <SolidColorBrush x:Key="SelectedRowBrush" Color="#EAF3FF" />
+  <SolidColorBrush x:Key="HoverRowBrush" Color="#F3F8FF" />
+  <SolidColorBrush x:Key="SuccessBrush" Color="#1F8A4C" />
+  <SolidColorBrush x:Key="DangerBrush" Color="#B42318" />
+</ResourceDictionary>
