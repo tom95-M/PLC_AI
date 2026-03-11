@@ -157,34 +157,6 @@ body {
   color: var(--missing);
 }
 
-.chat-log {
-  margin-top: 8px;
-  max-height: 120px;
-  overflow-y: auto;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #f7fcf9;
-  padding: 8px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.chat-log-item {
-  font-size: 13px;
-  line-height: 1.4;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.chat-log-item.ok {
-  color: #1c5f45;
-}
-
-.chat-log-item.error {
-  color: #9c2a2a;
-}
-
 .chat-history {
   margin-top: 8px;
   min-height: 320px;
@@ -219,6 +191,21 @@ body {
   align-self: flex-start;
   background: #ffffff;
   border: 1px solid #d6e8e1;
+}
+
+.chat-system {
+  align-self: stretch;
+  max-width: 100%;
+  background: #f1fbf5;
+  border: 1px solid #cde8d8;
+  color: #1c5f45;
+  font-size: 13px;
+}
+
+.chat-error {
+  background: #ffecec;
+  border-color: #efb1b1;
+  color: #9c2a2a;
 }
 
 .ai-row {

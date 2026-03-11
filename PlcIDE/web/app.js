@@ -5,7 +5,6 @@ const aiInput = document.getElementById("aiInput");
 const aiSendBtn = document.getElementById("aiSendBtn");
 const chatHistory = document.getElementById("chatHistory");
 const chatClearBtn = document.getElementById("chatClearBtn");
-const chatLog = document.getElementById("chatLog");
 
 const openAgentModalBtn = document.getElementById("openAgentModalBtn");
 const closeAgentModalBtn = document.getElementById("closeAgentModalBtn");
@@ -32,13 +31,7 @@ const state = {
 };
 
 function appendLog(text, isError = false) {
-  if (!chatLog) return;
-  const line = document.createElement("div");
-  line.className = `chat-log-item ${isError ? "error" : "ok"}`;
-  line.textContent = text;
-  chatLog.appendChild(line);
-  while (chatLog.children.length > 80) chatLog.removeChild(chatLog.firstChild);
-  chatLog.scrollTop = chatLog.scrollHeight;
+  addChat("system", text, isError);
 }
 
 function openAgentModal() {
@@ -53,9 +46,9 @@ function closeAgentModal() {
   agentModal.setAttribute("aria-hidden", "true");
 }
 
-function addChat(role, content) {
-  state.messages.push({ role, content });
-  if (state.messages.length > 30) state.messages = state.messages.slice(-30);
+function addChat(role, content, isError = false) {
+  state.messages.push({ role, content, isError: !!isError });
+  if (state.messages.length > 80) state.messages = state.messages.slice(-80);
   renderChat();
 }
 
@@ -63,7 +56,15 @@ function renderChat() {
   chatHistory.innerHTML = "";
   for (const msg of state.messages) {
     const item = document.createElement("div");
-    item.className = `chat-item ${msg.role === "user" ? "chat-user" : "chat-assistant"}`;
+    item.className = "chat-item";
+    if (msg.role === "user") {
+      item.classList.add("chat-user");
+    } else if (msg.role === "assistant") {
+      item.classList.add("chat-assistant");
+    } else {
+      item.classList.add("chat-system");
+    }
+    if (msg.isError) item.classList.add("chat-error");
     item.textContent = msg.content;
     chatHistory.appendChild(item);
   }
@@ -224,12 +225,9 @@ async function sendAiCommand() {
     });
     const reply = data.message || "执行完成";
     addChat("assistant", reply);
-    const agentNameText = findAgent(data.agentId)?.name || data.agentId || "Agent";
-    appendLog(`[${agentNameText}] ${reply}`);
     await refreshTools();
   } catch (error) {
-    addChat("assistant", `错误: ${error.message}`);
-    appendLog(`AI 执行失败: ${error.message}`, true);
+    addChat("assistant", `错误: ${error.message}`, true);
     await refreshTools();
   } finally {
     aiSendBtn.disabled = false;
