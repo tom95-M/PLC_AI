@@ -6,7 +6,7 @@ namespace S7PlcSimulator;
 
 public enum ProjectNodeType
 {
-    //测试
+    
     PlcRoot,
     ProgramFolder,
     ProgramGroup,
