@@ -46,6 +46,7 @@ public sealed class VariableRow : INotifyPropertyChanged
     private int _arrayUpperBound = 1;
     private string _startValue = "FALSE";
     private string _value = "false";
+    private string _runtimeAddressDisplay = string.Empty;
     private bool _isArrayExpanded = true;
     private bool _isSyncingArrayItems;
 
@@ -316,6 +317,21 @@ public sealed class VariableRow : INotifyPropertyChanged
         PlcValueType.WString => $"DB{DbNumber}.WSTRING{Offset}[{StringLength}]",
         _ => $"DB{DbNumber}@{Offset}"
     };
+
+    public string RuntimeAddressDisplay
+    {
+        get => string.IsNullOrWhiteSpace(_runtimeAddressDisplay) ? AddressDisplay : _runtimeAddressDisplay;
+        set
+        {
+            if (EqualityComparer<string>.Default.Equals(_runtimeAddressDisplay, value))
+            {
+                return;
+            }
+
+            _runtimeAddressDisplay = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RuntimeAddressDisplay)));
+        }
+    }
 
     public string TypeLabel => Type switch
     {

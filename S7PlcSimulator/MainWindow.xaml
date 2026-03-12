@@ -148,7 +148,12 @@
     <DockPanel Background="{DynamicResource WindowBrush}">
         <Border DockPanel.Dock="Top" Height="34" Background="{DynamicResource TopBarBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1" Padding="8,0">
             <Menu VerticalAlignment="Center">
-                <MenuItem Header="文件" />
+                <MenuItem Header="文件">
+                    <MenuItem Header="新建西门子PLC模拟器" Click="NewSiemensSimulatorMenuItem_OnClick" />
+                    <MenuItem Header="新建三菱PLC模拟器" Click="NewMitsubishiSimulatorMenuItem_OnClick" />
+                    <MenuItem Header="新建汇川PLC模拟器" Click="NewInovanceSimulatorMenuItem_OnClick" />
+                    <MenuItem Header="新建基恩士PLC模拟器" Click="NewKeyenceSimulatorMenuItem_OnClick" />
+                </MenuItem>
                 <MenuItem Header="设置">
                     <MenuItem Header="主题设置" Click="ThemeSettingsMenuItem_OnClick" />
                     <MenuItem Header="IP测试" Click="IpTestMenuItem_OnClick" />

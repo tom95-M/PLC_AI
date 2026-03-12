@@ -1,4 +1,4 @@
-﻿﻿using System.Collections.ObjectModel;
+﻿﻿﻿using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Buffers.Binary;
@@ -17,6 +17,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using S7PlcSimulator.Core.Models;
 
 namespace S7PlcSimulator;
 
@@ -35,6 +36,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private bool _isMonitorValueCellContext;
     private int? _activeDbNumber;
     private ProjectTreeNode? _selectedNode;
+    private readonly bool _loadAppState;
+    private readonly PlcVendor _startupVendor;
+    private readonly ProtocolKind _startupProtocol;
+    private readonly string? _startupPlcName;
     private readonly DispatcherTimer _valueRefreshTimer = new();
     private readonly Dictionary<VariableRow, string> _typeEditorTextBeforeEdit = [];
     private const int MaxArrayElementCount = 10_000;
@@ -82,16 +87,40 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
     public string CurrentDataBlockName => _selectedNode?.NodeType == ProjectNodeType.DataBlock
         ? _selectedNode.Name
-        : "变量面板";
+        : IsMitsubishiPlcSelected ? "三菱变量表" : "变量面板";
     public bool IsPlcOverviewSelected => _selectedNode?.NodeType == ProjectNodeType.PlcRoot;
     public bool IsProgramAreaSelected => _selectedNode?.NodeType is ProjectNodeType.ProgramFolder or ProjectNodeType.ProgramGroup;
     public bool IsDataBlockSelected => _selectedNode?.NodeType == ProjectNodeType.DataBlock;
     public bool IsVariablePanelVisible => !IsPlcOverviewSelected && !IsProgramAreaSelected;
+    public bool ShowPlcOverviewPanel => IsPlcOverviewSelected && !IsMitsubishiPlcSelected;
+    public bool ShowProgramAreaPanel => IsProgramAreaSelected && !IsMitsubishiPlcSelected;
+    public bool ShowVariableWorkbench => IsDataBlockSelected || IsMitsubishiPlcSelected;
+    public bool ShowDataBlockTitle => !IsMitsubishiPlcSelected;
+    public bool IsMitsubishiPlcSelected
+    {
+        get
+        {
+            var plcRoot = GetCurrentPlcRoot();
+            return plcRoot is not null &&
+                   _plcEndpointSettings.TryGetValue(plcRoot, out var settings) &&
+                   settings.Vendor == PlcVendor.Mitsubishi;
+        }
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public MainWindow()
+        : this(PlcVendor.Siemens, ProtocolKind.S7, null, true)
     {
+    }
+
+    public MainWindow(PlcVendor startupVendor, ProtocolKind startupProtocol, string? startupPlcName = null, bool loadAppState = false)
+    {
+        _startupVendor = startupVendor;
+        _startupProtocol = startupProtocol;
+        _startupPlcName = startupPlcName;
+        _loadAppState = loadAppState;
+
         FilteredVariables = CollectionViewSource.GetDefaultView(Variables);
         FilteredVariables.Filter = item => item is VariableRow row && _activeDbNumber.HasValue && row.DbNumber == _activeDbNumber.Value;
         EnsureVariablesSortOrder();
@@ -105,7 +134,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         InitializeComponent();
         DataContext = this;
 
-        var appState = LoadAppState(AppStateFilePath);
+        var appState = _loadAppState ? LoadAppState(AppStateFilePath) : null;
         var dbConfig = appState is not null
             ? BuildDbConfigFromState(appState)
             : (LoadDbConfig("dbconfig.json") ?? new Dictionary<int, int> { [1] = 1000 });
@@ -158,7 +187,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void InitializeProjectTree()
     {
-        AddPlcSimulator("S7-1200/S7-1500模拟器_1");
+        var name = string.IsNullOrWhiteSpace(_startupPlcName) ? $"{GetVendorDisplayName(_startupVendor)}模拟器_1" : _startupPlcName;
+        AddPlcSimulator(name, _startupVendor, _startupProtocol);
     }
 
     private void ProjectTreeView_OnSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -232,7 +262,34 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void AddPlcSimulatorButton_OnClick(object sender, RoutedEventArgs e)
     {
         var nextIndex = FindNextPlcIndex();
-        AddPlcSimulator($"S7-1200/S7-1500模拟器_{nextIndex}");
+        AddPlcSimulator($"{GetVendorDisplayName(PlcVendor.Siemens)}模拟器_{nextIndex}", PlcVendor.Siemens, ProtocolKind.S7);
+    }
+
+    private void NewSiemensSimulatorMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        OpenNewSimulatorWindow(PlcVendor.Siemens, ProtocolKind.S7);
+    }
+
+    private void NewMitsubishiSimulatorMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        OpenNewSimulatorWindow(PlcVendor.Mitsubishi, ProtocolKind.Mc3E);
+    }
+
+    private void NewInovanceSimulatorMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        OpenNewSimulatorWindow(PlcVendor.Inovance, ProtocolKind.ModbusTcp);
+    }
+
+    private void NewKeyenceSimulatorMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        OpenNewSimulatorWindow(PlcVendor.Keyence, ProtocolKind.ModbusTcp);
+    }
+
+    private void OpenNewSimulatorWindow(PlcVendor vendor, ProtocolKind protocol)
+    {
+        var simulatorWindow = new MainWindow(vendor, protocol, startupPlcName: null, loadAppState: false);
+        simulatorWindow.Show();
+        simulatorWindow.Activate();
     }
 
     private void RemovePlcSimulatorButton_OnClick(object sender, RoutedEventArgs e)
@@ -742,7 +799,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         return candidate;
     }
 
-    private void AddPlcSimulator(string plcName)
+    private void AddPlcSimulator(string plcName, PlcVendor vendor, ProtocolKind protocol)
     {
         var plcRoot = new ProjectTreeNode
         {
@@ -762,10 +819,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         _selectedNode = plcRoot;
         var defaultAddress = ProjectNodes.Count == 1 ? GetPreferredDefaultAddress() : string.Empty;
-        var settings = new PlcEndpointSettings(defaultAddress, DefaultPlcPort, true);
+        var settings = new PlcEndpointSettings(defaultAddress, DefaultPlcPort, true, vendor, protocol);
         _plcEndpointSettings[plcRoot] = settings;
         ApplyPlcSettings(plcRoot, settings);
-        AddLog($"已新增 PLC 模拟器: {plcName}");
+        AddLog($"已新增 PLC 模拟器: {plcName}，品牌={settings.Vendor}，协议={settings.Protocol}");
         RefreshVariableFilter();
         UpdateSimulatorRunState();
     }
@@ -826,6 +883,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         var start = idx + marker.Length;
         return start < name.Length && int.TryParse(name[start..], out var num) ? num : -1;
+    }
+
+    private static string GetVendorDisplayName(PlcVendor vendor)
+    {
+        return vendor switch
+        {
+            PlcVendor.Siemens => "S7-1200/S7-1500",
+            PlcVendor.Mitsubishi => "三菱",
+            PlcVendor.Inovance => "汇川",
+            PlcVendor.Keyence => "基恩士",
+            _ => "PLC"
+        };
     }
 
     private ProjectTreeNode? GetCurrentPlcRoot()
@@ -897,6 +966,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         OnPropertyChanged(nameof(IsProgramAreaSelected));
         OnPropertyChanged(nameof(IsDataBlockSelected));
         OnPropertyChanged(nameof(IsVariablePanelVisible));
+        OnPropertyChanged(nameof(IsMitsubishiPlcSelected));
+        OnPropertyChanged(nameof(ShowPlcOverviewPanel));
+        OnPropertyChanged(nameof(ShowProgramAreaPanel));
+        OnPropertyChanged(nameof(ShowVariableWorkbench));
+        OnPropertyChanged(nameof(ShowDataBlockTitle));
+        ApplyVariableGridLayout();
     }
 
     private int ParseDbNumber(string dbDisplayName)
@@ -1067,7 +1142,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             }
 
             var address = AddressTextBox.Text.Trim();
-            var settings = new PlcEndpointSettings(address, port, true);
+            var current = GetOrCreatePlcSettings(plcRoot);
+            var settings = new PlcEndpointSettings(address, port, true, current.Vendor, current.Protocol);
             _plcEndpointSettings[plcRoot] = settings;
             ApplyPlcSettings(plcRoot, settings);
             if (port <= 1024)
@@ -1107,9 +1183,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             var selectedDbNumber = ResolveSelectedDbNumber();
             if (!selectedDbNumber.HasValue)
             {
-                AddLog("请先在项目树中选中一个数据块，再新增变量。");
-                return;
+                if (IsMitsubishiPlcSelected)
+                {
+                    selectedDbNumber = 1;
+                }
+                else
+                {
+                    AddLog("请先在项目树中选中一个数据块，再新增变量。");
+                    return;
+                }
             }
+
+            var defaultType = IsMitsubishiPlcSelected ? PlcValueType.Int : PlcValueType.Bool;
 
             var row = new VariableRow
             {
@@ -1117,14 +1202,15 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 DbNumber = selectedDbNumber.Value,
                 Offset = 0,
                 Bit = 0,
-                Type = PlcValueType.Bool,
+                Type = defaultType,
                 StringLength = DefaultStringLength,
-                StartValue = GetDefaultStartValueByType(PlcValueType.Bool),
-                Value = "false"
+                StartValue = GetDefaultStartValueByType(defaultType),
+                Value = GetDefaultStartValueByType(defaultType)
             };
 
             Variables.Add(row);
             RecalculateOffsetsForDb(row.DbNumber);
+            UpdateRuntimeAddressDisplay(row);
             TryWriteRow(row, writeLog: false);
         }
         catch (Exception ex)
@@ -1286,6 +1372,30 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             return;
         }
 
+        if (e.Column == MonitorValueColumn)
+        {
+            if (!IsMitsubishiPlcSelected)
+            {
+                return;
+            }
+
+            var currentValue = (e.EditingElement as TextBox)?.Text ?? row.Value;
+            Dispatcher.InvokeAsync(() => TryWriteCurrentValue(row, currentValue));
+            return;
+        }
+
+        if (e.Column == AddressColumn)
+        {
+            if (!IsMitsubishiPlcSelected)
+            {
+                return;
+            }
+
+            var rawAddress = (e.EditingElement as TextBox)?.Text ?? row.RuntimeAddressDisplay;
+            Dispatcher.InvokeAsync(() => TryApplyMitsubishiAddressEdit(row, rawAddress));
+            return;
+        }
+
         if (e.Column == TypeColumn)
         {
             Dispatcher.InvokeAsync(() =>
@@ -1352,6 +1462,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             return;
         }
 
+        if (e.Column == MonitorValueColumn && !IsMitsubishiPlcSelected)
+        {
+            e.Cancel = true;
+            return;
+        }
+
+        if (e.Column == AddressColumn && !IsMitsubishiPlcSelected)
+        {
+            e.Cancel = true;
+            return;
+        }
+
         if (e.Column != TypeColumn)
         {
             return;
@@ -1386,6 +1508,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (sender is not VariableRow row)
         {
             return;
+        }
+
+        if (e.PropertyName is nameof(VariableRow.Type) or nameof(VariableRow.Offset) or nameof(VariableRow.Bit) or nameof(VariableRow.DbNumber) or nameof(VariableRow.ArrayElementType))
+        {
+            UpdateRuntimeAddressDisplay(row);
         }
 
         if (e.PropertyName == nameof(VariableRow.Type))
@@ -1604,7 +1731,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private string BuildAddressText(VariableRow row)
     {
-        return row.AddressDisplay;
+        return row.RuntimeAddressDisplay;
     }
 
     private void AddLog(string message)
@@ -1648,11 +1775,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void SetMonitorEnabled(bool enabled, bool writeLog = true)
     {
         IsMonitorEnabled = enabled;
-        MonitorValueColumn.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
-        MonitorValueColumn.DisplayIndex = 4;
-        AddressColumn.DisplayIndex = enabled ? 5 : 4;
-        ApplyEqualColumnWidths();
-
         MonitorTogglePanel.Background = enabled
             ? GetThemeBrush("MonitorToggleBackgroundBrush", Brushes.Transparent)
             : Brushes.Transparent;
@@ -1677,6 +1799,199 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             AddLog(enabled ? "已启动变量监控。" : "已停止变量监控。");
         }
+
+        ApplyVariableGridLayout();
+    }
+
+    private void TryWriteCurrentValue(VariableRow row, string currentValue)
+    {
+        var oldStartValue = row.StartValue;
+        var oldValue = row.Value;
+        row.StartValue = currentValue;
+        row.Value = currentValue;
+        try
+        {
+            ValidateRowAddress(row);
+            WriteRowValue(row);
+            row.Value = ReadRowValue(row);
+            AddLog($"写入当前值 {BuildAddressText(row)} = {row.Value}");
+        }
+        catch (Exception ex)
+        {
+            row.StartValue = oldStartValue;
+            row.Value = oldValue;
+            AddLog($"写入当前值失败 {BuildAddressText(row)}: {ex.Message}");
+        }
+    }
+
+    private void ApplyVariableGridLayout()
+    {
+        if (IsMitsubishiPlcSelected)
+        {
+            if (!IsMonitorEnabled)
+            {
+                SetMonitorEnabled(true, writeLog: false);
+                return;
+            }
+
+            NameColumn.Visibility = Visibility.Collapsed;
+            OffsetColumn.Visibility = Visibility.Collapsed;
+            StartValueColumn.Visibility = Visibility.Collapsed;
+            TypeColumn.Visibility = Visibility.Visible;
+            AddressColumn.Visibility = Visibility.Visible;
+            MonitorValueColumn.Visibility = Visibility.Visible;
+
+            AddressColumn.Header = "变量地址";
+            TypeColumn.Header = "数据类型";
+            MonitorValueColumn.Header = "当前值";
+
+            AddressColumn.DisplayIndex = 0;
+            TypeColumn.DisplayIndex = 1;
+            MonitorValueColumn.DisplayIndex = 2;
+            MonitorToggleButton.IsEnabled = false;
+        }
+        else
+        {
+            NameColumn.Visibility = Visibility.Visible;
+            OffsetColumn.Visibility = Visibility.Visible;
+            StartValueColumn.Visibility = Visibility.Visible;
+            TypeColumn.Visibility = Visibility.Visible;
+            AddressColumn.Visibility = Visibility.Visible;
+            MonitorValueColumn.Visibility = IsMonitorEnabled ? Visibility.Visible : Visibility.Collapsed;
+
+            NameColumn.Header = "名称";
+            AddressColumn.Header = "具体地址";
+            MonitorValueColumn.Header = "监视值";
+
+            MonitorValueColumn.DisplayIndex = 4;
+            AddressColumn.DisplayIndex = IsMonitorEnabled ? 5 : 4;
+            MonitorToggleButton.IsEnabled = true;
+        }
+
+        RefreshRuntimeAddressDisplays();
+        ApplyEqualColumnWidths();
+    }
+
+    private void RefreshRuntimeAddressDisplays()
+    {
+        foreach (var row in Variables)
+        {
+            UpdateRuntimeAddressDisplay(row);
+        }
+    }
+
+    private void UpdateRuntimeAddressDisplay(VariableRow row)
+    {
+        row.RuntimeAddressDisplay = IsMitsubishiPlcSelected
+            ? BuildMitsubishiAddressDisplay(row)
+            : row.AddressDisplay;
+    }
+
+    private static string BuildMitsubishiAddressDisplay(VariableRow row)
+    {
+        var actualType = row.Type == PlcValueType.Array ? row.ArrayElementType : row.Type;
+        if (actualType == PlcValueType.Bool)
+        {
+            var bitAddress = Math.Max(0, row.Offset * 8 + row.Bit);
+            return $"M{bitAddress}";
+        }
+
+        if (actualType is PlcValueType.Real or PlcValueType.LReal)
+        {
+            return $"R{Math.Max(0, row.Offset)}";
+        }
+
+        return $"D{Math.Max(0, row.Offset)}";
+    }
+
+    private void TryApplyMitsubishiAddressEdit(VariableRow row, string rawAddress)
+    {
+        var oldType = row.Type;
+        var oldOffset = row.Offset;
+        var oldBit = row.Bit;
+        var oldRuntimeAddress = row.RuntimeAddressDisplay;
+        try
+        {
+            if (!TryParseMitsubishiAddress(rawAddress, out var deviceCode, out var deviceIndex, out var parseError))
+            {
+                throw new InvalidOperationException(parseError);
+            }
+
+            switch (deviceCode)
+            {
+                case 'M':
+                    row.Type = PlcValueType.Bool;
+                    row.Offset = deviceIndex / 8;
+                    row.Bit = deviceIndex % 8;
+                    break;
+                case 'R':
+                    if (row.Type == PlcValueType.Bool)
+                    {
+                        row.Type = PlcValueType.Real;
+                    }
+
+                    row.Offset = deviceIndex;
+                    row.Bit = 0;
+                    break;
+                case 'D':
+                    if (row.Type == PlcValueType.Bool)
+                    {
+                        row.Type = PlcValueType.Int;
+                    }
+
+                    row.Offset = deviceIndex;
+                    row.Bit = 0;
+                    break;
+            }
+
+            RecalculateOffsetsForDb(row.DbNumber);
+            UpdateRuntimeAddressDisplay(row);
+            TryReadRow(row, writeLog: false);
+            AddLog($"已更新变量地址: {oldRuntimeAddress} -> {row.RuntimeAddressDisplay}");
+        }
+        catch (Exception ex)
+        {
+            row.Type = oldType;
+            row.Offset = oldOffset;
+            row.Bit = oldBit;
+            row.RuntimeAddressDisplay = oldRuntimeAddress;
+            AddLog($"地址修改失败: {ex.Message}");
+        }
+    }
+
+    private static bool TryParseMitsubishiAddress(string rawAddress, out char deviceCode, out int deviceIndex, out string error)
+    {
+        deviceCode = default;
+        deviceIndex = 0;
+        error = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(rawAddress))
+        {
+            error = "变量地址不能为空。";
+            return false;
+        }
+
+        var text = rawAddress.Trim().ToUpperInvariant();
+        if (text.Length < 2)
+        {
+            error = "变量地址格式无效，请输入 M/D/R + 数字，例如 M0、D100、R20。";
+            return false;
+        }
+
+        deviceCode = text[0];
+        if (deviceCode is not ('M' or 'D' or 'R'))
+        {
+            error = "三菱变量地址仅支持 M、D、R 设备类型。";
+            return false;
+        }
+
+        if (!int.TryParse(text[1..], out deviceIndex) || deviceIndex < 0)
+        {
+            error = "变量地址数字部分无效。";
+            return false;
+        }
+
+        return true;
     }
 
     private void ApplyEqualColumnWidths()
@@ -1696,7 +2011,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void UpdateConnectionStatus(bool connected)
     {
-        Title = connected ? "S7 PLC Simulator (已连接)" : "S7 PLC Simulator";
+        Title = connected ? "PLC Multi-Brand Simulator (已连接)" : "PLC Multi-Brand Simulator";
         UpdateSimulatorRunState();
     }
 
@@ -2741,12 +3056,22 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 state.PlcSettings.TryGetValue(root.Name, out var setting) &&
                 !string.IsNullOrWhiteSpace(setting.Address))
             {
-                _plcEndpointSettings[root] = new PlcEndpointSettings(setting.Address, setting.Port, setting.AutoStart);
+                _plcEndpointSettings[root] = new PlcEndpointSettings(
+                    setting.Address,
+                    setting.Port,
+                    setting.AutoStart,
+                    setting.Vendor,
+                    setting.Protocol);
             }
             else
             {
                 var defaultAddress = _plcEndpointSettings.Count == 0 ? GetPreferredDefaultAddress() : string.Empty;
-                _plcEndpointSettings[root] = new PlcEndpointSettings(defaultAddress, DefaultPlcPort, true);
+                _plcEndpointSettings[root] = new PlcEndpointSettings(
+                    defaultAddress,
+                    DefaultPlcPort,
+                    true,
+                    PlcVendor.Siemens,
+                    ProtocolKind.S7);
             }
         }
         if (state.DbBlocks is not null)
@@ -2831,7 +3156,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                         {
                             Address = x.Value.Address,
                             Port = x.Value.Port,
-                            AutoStart = x.Value.AutoStart
+                            AutoStart = x.Value.AutoStart,
+                            Vendor = x.Value.Vendor,
+                            Protocol = x.Value.Protocol
                         })
             };
 
@@ -2938,13 +3265,26 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             return settings;
         }
 
-        settings = new PlcEndpointSettings(GetPreferredDefaultAddress(), DefaultPlcPort, true);
+        settings = new PlcEndpointSettings(
+            GetPreferredDefaultAddress(),
+            DefaultPlcPort,
+            true,
+            PlcVendor.Siemens,
+            ProtocolKind.S7);
         _plcEndpointSettings[plcRoot] = settings;
         return settings;
     }
 
     private void ApplyPlcSettings(ProjectTreeNode plcRoot, PlcEndpointSettings settings)
     {
+        if (settings.Vendor != PlcVendor.Siemens || settings.Protocol != ProtocolKind.S7)
+        {
+            StopPlcServer(plcRoot);
+            AddLog($"[{plcRoot.Name}] 已保存 品牌={settings.Vendor} 协议={settings.Protocol}，当前版本仅实现 Siemens/S7 启动。");
+            UpdateConnectionStatus(_plcServerHosts.Count > 0);
+            return;
+        }
+
         if (settings.AutoStart)
         {
             if (!TryValidateIpAddress(settings.Address, out var ipError))
@@ -3162,7 +3502,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 return;
             }
 
-            updated = new PlcEndpointSettings(address, port, autoStartCheckBox.IsChecked == true);
+            updated = new PlcEndpointSettings(address, port, autoStartCheckBox.IsChecked == true, current.Vendor, current.Protocol);
             dialog.DialogResult = true;
             dialog.Close();
         };
@@ -4249,7 +4589,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
 public sealed record PlcTypeOption(PlcValueType Value, string Label);
 
-public sealed record PlcEndpointSettings(string Address, int Port, bool AutoStart);
+public sealed record PlcEndpointSettings(string Address, int Port, bool AutoStart, PlcVendor Vendor, ProtocolKind Protocol);
 
 public sealed record ArrayTypeDefinition(PlcValueType ElementType, int LowerBound, int UpperBound, int? StringLength);
 
@@ -4290,4 +4630,6 @@ public sealed class PlcEndpointSettingState
     public string Address { get; set; } = "";
     public int Port { get; set; } = 102;
     public bool AutoStart { get; set; } = true;
+    public PlcVendor Vendor { get; set; } = PlcVendor.Siemens;
+    public ProtocolKind Protocol { get; set; } = ProtocolKind.S7;
 }
