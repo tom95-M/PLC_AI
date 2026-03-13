@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("S7PlcSimulator")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a661a113d19b53045f9d535999ddc1c8e31fbc24")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+12b6182209b508bc8238b20e07a3d41f9e639a5c")]
 [assembly: System.Reflection.AssemblyProductAttribute("S7PlcSimulator")]
 [assembly: System.Reflection.AssemblyTitleAttribute("S7PlcSimulator")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

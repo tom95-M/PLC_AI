@@ -1,4 +1,4 @@
-﻿﻿﻿using System.Collections.ObjectModel;
+﻿﻿﻿﻿using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Buffers.Binary;
@@ -96,6 +96,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public bool ShowProgramAreaPanel => IsProgramAreaSelected && !IsMitsubishiPlcSelected;
     public bool ShowVariableWorkbench => IsDataBlockSelected || IsMitsubishiPlcSelected;
     public bool ShowDataBlockTitle => !IsMitsubishiPlcSelected;
+    public string CurrentWindowTitle => $"{GetVendorName(ResolveWindowVendorAndProtocol().Vendor)} PLC Simulator";
+    public string CurrentHeaderTitle => $"{GetVendorName(ResolveWindowVendorAndProtocol().Vendor)} PLC Simulator";
     public bool IsMitsubishiPlcSelected
     {
         get
@@ -187,7 +189,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void InitializeProjectTree()
     {
-        var name = string.IsNullOrWhiteSpace(_startupPlcName) ? $"{GetVendorDisplayName(_startupVendor)}模拟器_1" : _startupPlcName;
+        var name = string.IsNullOrWhiteSpace(_startupPlcName) ? $"{GetVendorDisplayName(_startupVendor)} Simulator_1" : _startupPlcName;
         AddPlcSimulator(name, _startupVendor, _startupProtocol);
     }
 
@@ -230,7 +232,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         switch (_selectedNode.NodeType)
         {
             case ProjectNodeType.PlcRoot:
-                menu.Items.Add(CreateMenuItem("新增PLC模拟器", AddPlcSimulatorButton_OnClick));
+                var (windowVendor, _) = ResolveWindowVendorAndProtocol();
+                menu.Items.Add(CreateMenuItem($"Add {GetVendorDisplayName(windowVendor)} PLC Simulator", AddPlcSimulatorButton_OnClick));
                 menu.Items.Add(CreateMenuItem("删除PLC模拟器", RemovePlcSimulatorButton_OnClick));
                 menu.Items.Add(CreateMenuItem("PLC设置", PlcSettingsButton_OnClick));
                 break;
@@ -261,8 +264,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void AddPlcSimulatorButton_OnClick(object sender, RoutedEventArgs e)
     {
+        var (vendor, protocol) = ResolveWindowVendorAndProtocol();
         var nextIndex = FindNextPlcIndex();
-        AddPlcSimulator($"{GetVendorDisplayName(PlcVendor.Siemens)}模拟器_{nextIndex}", PlcVendor.Siemens, ProtocolKind.S7);
+        AddPlcSimulator($"{GetVendorDisplayName(vendor)} Simulator_{nextIndex}", vendor, protocol);
     }
 
     private void NewSiemensSimulatorMenuItem_OnClick(object sender, RoutedEventArgs e)
@@ -287,9 +291,46 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void OpenNewSimulatorWindow(PlcVendor vendor, ProtocolKind protocol)
     {
+        var existingWindow = FindOpenedWindowByVendor(vendor);
+        if (existingWindow is not null)
+        {
+            var vendorName = GetVendorDisplayName(vendor);
+            ShowModernInfoDialog(
+                "新建提示",
+                "该类型模拟器已打开。",
+                $"已打开 {vendorName} PLC 模拟器界面，同类型不允许多开。\n将自动切换到已打开窗口。");
+
+            existingWindow.Show();
+            if (existingWindow.WindowState == WindowState.Minimized)
+            {
+                existingWindow.WindowState = WindowState.Normal;
+            }
+            existingWindow.Activate();
+            return;
+        }
+
         var simulatorWindow = new MainWindow(vendor, protocol, startupPlcName: null, loadAppState: false);
         simulatorWindow.Show();
         simulatorWindow.Activate();
+    }
+
+    private MainWindow? FindOpenedWindowByVendor(PlcVendor vendor)
+    {
+        if (Application.Current is null)
+        {
+            return null;
+        }
+
+        foreach (var window in Application.Current.Windows.OfType<MainWindow>())
+        {
+            var windowVendor = window.ResolveWindowVendorAndProtocol().Vendor;
+            if (windowVendor == vendor)
+            {
+                return window;
+            }
+        }
+
+        return null;
     }
 
     private void RemovePlcSimulatorButton_OnClick(object sender, RoutedEventArgs e)
@@ -489,14 +530,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                     tcpResult = $"TCP 连接失败：{ex.Message}";
                 }
 
-                var summary = tcpOk || pingOk ? "通断测试：可达" : "通断测试：不可达";
-                var icon = tcpOk || pingOk ? MessageBoxImage.Information : MessageBoxImage.Warning;
-                MessageBox.Show(
-                    dialog,
-                    $"{summary}\n客户端：{ip}:{port}\n{pingResult}\n{tcpResult}",
-                    "IP测试",
-                    MessageBoxButton.OK,
-                    icon);
+                var reachable = tcpOk || pingOk;
+                var summary = reachable ? "通断测试：可达" : "通断测试：不可达";
+                ShowModernStatusDialog(
+                    "IP测试结果",
+                    summary,
+                    $"客户端：{ip}:{port}\n{pingResult}\n{tcpResult}",
+                    reachable ? ModernDialogKind.Success : ModernDialogKind.Warning);
             }
             finally
             {
@@ -575,6 +615,166 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         TryCopyImplicitStyle(dialog, typeof(ComboBox));
         TryCopyImplicitStyle(dialog, typeof(CheckBox));
         TryCopyImplicitStyle(dialog, typeof(RadioButton));
+    }
+
+    private enum ModernDialogKind
+    {
+        Info,
+        Success,
+        Warning,
+        Error
+    }
+
+    private void ShowModernInfoDialog(string title, string headline, string message)
+    {
+        ShowModernStatusDialog(title, headline, message, ModernDialogKind.Info);
+    }
+
+    private void ShowModernStatusDialog(string title, string headline, string message, ModernDialogKind kind)
+    {
+        var ownerWidth = this.ActualWidth > 0 ? this.ActualWidth : this.Width;
+        var textMaxWidth = Math.Clamp(ownerWidth * 0.42, 260, 560);
+        var dialogMaxWidth = textMaxWidth + 120;
+
+        var subtleBrush = GetThemeBrush("SubtleBrush", Brushes.DimGray);
+        var panelBrush = GetThemeBrush("PanelBrush", Brushes.White);
+        var borderBrush = GetThemeBrush("PanelBorderBrush", Brushes.LightGray);
+        var accentBrush = kind switch
+        {
+            ModernDialogKind.Success => GetThemeBrush("SuccessBrush", Brushes.SeaGreen),
+            ModernDialogKind.Warning => new SolidColorBrush((Color)ColorConverter.ConvertFromString("#C2410C")),
+            ModernDialogKind.Error => GetThemeBrush("DangerBrush", Brushes.Firebrick),
+            _ => new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1D4ED8"))
+        };
+        var headlineBrush = accentBrush;
+        var messageBrush = kind switch
+        {
+            ModernDialogKind.Warning => accentBrush,
+            ModernDialogKind.Error => accentBrush,
+            _ => subtleBrush
+        };
+        var iconText = kind switch
+        {
+            ModernDialogKind.Success => "✓",
+            ModernDialogKind.Warning => "!",
+            ModernDialogKind.Error => "✕",
+            _ => "i"
+        };
+
+        var iconCircle = new Border
+        {
+            Width = 36,
+            Height = 36,
+            CornerRadius = new CornerRadius(18),
+            Background = accentBrush,
+            VerticalAlignment = VerticalAlignment.Top,
+            Child = new TextBlock
+            {
+                Text = iconText,
+                FontSize = 20,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = Brushes.White,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            }
+        };
+
+        var headlineBlock = new TextBlock
+        {
+            Text = headline,
+            FontSize = 15,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = headlineBrush,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = textMaxWidth
+        };
+
+        var messageBlock = new TextBlock
+        {
+            Text = message,
+            Margin = new Thickness(0, 8, 0, 0),
+            Foreground = messageBrush,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = textMaxWidth
+        };
+
+        var contentRow = new Grid();
+        contentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        contentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        contentRow.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        contentRow.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        Grid.SetColumn(iconCircle, 0);
+        Grid.SetColumn(headlineBlock, 1);
+        Grid.SetRow(headlineBlock, 0);
+        Grid.SetColumn(messageBlock, 1);
+        Grid.SetRow(messageBlock, 1);
+        contentRow.Children.Add(iconCircle);
+        contentRow.Children.Add(headlineBlock);
+        contentRow.Children.Add(messageBlock);
+        headlineBlock.Margin = new Thickness(14, 0, 0, 0);
+        messageBlock.Margin = new Thickness(14, 8, 0, 0);
+
+        var okButton = new Button
+        {
+            Content = "确定",
+            Width = 92,
+            IsDefault = true
+        };
+
+        var buttonPanel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 18, 0, 0)
+        };
+        buttonPanel.Children.Add(okButton);
+
+        var body = new Border
+        {
+            Background = panelBrush,
+            BorderBrush = borderBrush,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(12),
+            Padding = new Thickness(18),
+            Child = new StackPanel
+            {
+                Children =
+                {
+                    contentRow,
+                    buttonPanel
+                }
+            }
+        };
+
+        var root = new Grid
+        {
+            Margin = new Thickness(14),
+            Children = { body }
+        };
+
+        var dialog = new Window
+        {
+            Title = title,
+            Content = root,
+            Owner = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            SizeToContent = SizeToContent.WidthAndHeight,
+            MinWidth = 360,
+            MaxWidth = dialogMaxWidth,
+            ResizeMode = ResizeMode.NoResize,
+            WindowStyle = WindowStyle.ToolWindow,
+            ShowInTaskbar = false
+        };
+        ApplyHtmlDialogTheme(dialog);
+
+        okButton.Click += (_, _) =>
+        {
+            dialog.DialogResult = true;
+            dialog.Close();
+        };
+
+        dialog.ShowDialog();
     }
 
     private void TryCopyImplicitStyle(Window dialog, Type targetType)
@@ -801,6 +1001,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void AddPlcSimulator(string plcName, PlcVendor vendor, ProtocolKind protocol)
     {
+        if (!TryValidateWindowVendorConsistency(vendor, out var consistencyError))
+        {
+            throw new InvalidOperationException(consistencyError);
+        }
+
         var plcRoot = new ProjectTreeNode
         {
             Name = plcName,
@@ -822,9 +1027,43 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         var settings = new PlcEndpointSettings(defaultAddress, DefaultPlcPort, true, vendor, protocol);
         _plcEndpointSettings[plcRoot] = settings;
         ApplyPlcSettings(plcRoot, settings);
+        NormalizeLegacyVariableTableNodes(plcRoot);
         AddLog($"已新增 PLC 模拟器: {plcName}，品牌={settings.Vendor}，协议={settings.Protocol}");
         RefreshVariableFilter();
         UpdateSimulatorRunState();
+    }
+
+    private (PlcVendor Vendor, ProtocolKind Protocol) ResolveWindowVendorAndProtocol()
+    {
+        foreach (var root in ProjectNodes.Where(x => x.NodeType == ProjectNodeType.PlcRoot))
+        {
+            if (_plcEndpointSettings.TryGetValue(root, out var settings))
+            {
+                return (settings.Vendor, settings.Protocol);
+            }
+        }
+
+        return (_startupVendor, _startupProtocol);
+    }
+
+    private bool TryValidateWindowVendorConsistency(PlcVendor targetVendor, out string? error)
+    {
+        foreach (var root in ProjectNodes.Where(x => x.NodeType == ProjectNodeType.PlcRoot))
+        {
+            if (!_plcEndpointSettings.TryGetValue(root, out var settings))
+            {
+                continue;
+            }
+
+            if (settings.Vendor != targetVendor)
+            {
+                error = $"当前界面仅允许 {GetVendorDisplayName(settings.Vendor)} 类型 PLC，不可新增 {GetVendorDisplayName(targetVendor)}。";
+                return false;
+            }
+        }
+
+        error = null;
+        return true;
     }
 
     private int FindNextPlcIndex()
@@ -874,14 +1113,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private static int ParsePlcIndexFromName(string name)
     {
-        const string marker = "模拟器_";
-        var idx = name.LastIndexOf(marker, StringComparison.Ordinal);
-        if (idx < 0)
+        var idx = name.LastIndexOf('_');
+        if (idx < 0 || idx >= name.Length - 1)
         {
             return -1;
         }
 
-        var start = idx + marker.Length;
+        var start = idx + 1;
         return start < name.Length && int.TryParse(name[start..], out var num) ? num : -1;
     }
 
@@ -889,10 +1127,22 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         return vendor switch
         {
-            PlcVendor.Siemens => "S7-1200/S7-1500",
-            PlcVendor.Mitsubishi => "三菱",
-            PlcVendor.Inovance => "汇川",
-            PlcVendor.Keyence => "基恩士",
+            PlcVendor.Siemens => "Siemens",
+            PlcVendor.Mitsubishi => "Mitsubishi",
+            PlcVendor.Inovance => "Inovance",
+            PlcVendor.Keyence => "Keyence",
+            _ => "PLC"
+        };
+    }
+
+    private static string GetVendorName(PlcVendor vendor)
+    {
+        return vendor switch
+        {
+            PlcVendor.Siemens => "Siemens",
+            PlcVendor.Mitsubishi => "Mitsubishi",
+            PlcVendor.Inovance => "Inovance",
+            PlcVendor.Keyence => "Keyence",
             _ => "PLC"
         };
     }
@@ -971,6 +1221,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         OnPropertyChanged(nameof(ShowProgramAreaPanel));
         OnPropertyChanged(nameof(ShowVariableWorkbench));
         OnPropertyChanged(nameof(ShowDataBlockTitle));
+        OnPropertyChanged(nameof(CurrentWindowTitle));
+        OnPropertyChanged(nameof(CurrentHeaderTitle));
         ApplyVariableGridLayout();
     }
 
@@ -1183,18 +1435,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             var selectedDbNumber = ResolveSelectedDbNumber();
             if (!selectedDbNumber.HasValue)
             {
-                if (IsMitsubishiPlcSelected)
-                {
-                    selectedDbNumber = 1;
-                }
-                else
-                {
-                    AddLog("请先在项目树中选中一个数据块，再新增变量。");
-                    return;
-                }
+                AddLog("请先在项目树中选中一个数据块，再新增变量。");
+                return;
             }
 
-            var defaultType = IsMitsubishiPlcSelected ? PlcValueType.Int : PlcValueType.Bool;
+            var defaultType = PlcValueType.Bool;
 
             var row = new VariableRow
             {
@@ -3073,7 +3318,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                     PlcVendor.Siemens,
                     ProtocolKind.S7);
             }
+
+            NormalizeLegacyVariableTableNodes(root);
         }
+
+        EnforceSingleVendorPerWindow();
+
         if (state.DbBlocks is not null)
         {
             foreach (var item in state.DbBlocks)
@@ -3122,6 +3372,121 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         _selectedNode = FindFirstDataBlockNode() ?? ProjectNodes.FirstOrDefault();
         return true;
+    }
+
+    private void EnforceSingleVendorPerWindow()
+    {
+        PlcVendor? expectedVendor = null;
+        foreach (var root in ProjectNodes.Where(x => x.NodeType == ProjectNodeType.PlcRoot).ToList())
+        {
+            if (!_plcEndpointSettings.TryGetValue(root, out var settings))
+            {
+                continue;
+            }
+
+            if (!expectedVendor.HasValue)
+            {
+                expectedVendor = settings.Vendor;
+                continue;
+            }
+
+            if (settings.Vendor == expectedVendor.Value)
+            {
+                continue;
+            }
+
+            StopPlcServer(root);
+            ProjectNodes.Remove(root);
+            _plcEndpointSettings.Remove(root);
+            AddLog($"已移除不匹配类型 PLC：{root.Name}（{GetVendorDisplayName(settings.Vendor)}）。当前窗口仅保留 {GetVendorDisplayName(expectedVendor.Value)}。");
+        }
+    }
+
+    private void NormalizeLegacyVariableTableNodes(ProjectTreeNode plcRoot)
+    {
+        if (!_plcEndpointSettings.TryGetValue(plcRoot, out var settings) || settings.Vendor != PlcVendor.Mitsubishi)
+        {
+            return;
+        }
+
+        var programFolder = FindNodeByType(plcRoot, ProjectNodeType.ProgramFolder);
+        if (programFolder is null)
+        {
+            return;
+        }
+
+        var usedDbNumbers = new HashSet<int>();
+        foreach (var child in programFolder.Children.Where(x => x.NodeType == ProjectNodeType.DataBlock))
+        {
+            if (TryParseDbNumber(child.Name, out var existingNumber))
+            {
+                usedDbNumbers.Add(existingNumber);
+            }
+        }
+
+        for (var i = 0; i < programFolder.Children.Count; i++)
+        {
+            var child = programFolder.Children[i];
+
+            if (child.NodeType == ProjectNodeType.DataBlock)
+            {
+                if (TryParseDbNumber(child.Name, out var existingDb))
+                {
+                    EnsureDbMemoryReady(existingDb);
+                    continue;
+                }
+            }
+            else if (!child.Name.Contains("变量表", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var dbNumber = ResolvePreferredDbNumberFromName(child.Name);
+            while (usedDbNumbers.Contains(dbNumber))
+            {
+                dbNumber++;
+            }
+
+            usedDbNumbers.Add(dbNumber);
+            EnsureDbMemoryReady(dbNumber);
+
+            var migratedNode = new ProjectTreeNode
+            {
+                Name = BuildDbDisplayName(dbNumber, $"数据块_{dbNumber}"),
+                NodeType = ProjectNodeType.DataBlock,
+                Parent = programFolder
+            };
+
+            foreach (var grandChild in child.Children)
+            {
+                grandChild.Parent = migratedNode;
+                migratedNode.Children.Add(grandChild);
+            }
+
+            programFolder.Children[i] = migratedNode;
+            AddLog($"已将旧节点“{child.Name}”迁移为数据块“{migratedNode.Name}”。");
+        }
+    }
+
+    private static int ResolvePreferredDbNumberFromName(string nodeName)
+    {
+        if (!string.IsNullOrWhiteSpace(nodeName))
+        {
+            var idx = nodeName.Length - 1;
+            while (idx >= 0 && char.IsDigit(nodeName[idx]))
+            {
+                idx--;
+            }
+
+            if (idx < nodeName.Length - 1 &&
+                int.TryParse(nodeName[(idx + 1)..], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) &&
+                parsed > 0)
+            {
+                return parsed;
+            }
+        }
+
+        return 1;
     }
 
     private void SaveAppState(string path)
